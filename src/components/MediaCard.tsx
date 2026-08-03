@@ -7,7 +7,7 @@ import axios from 'axios';
 import { saveAs } from 'file-saver';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { getSupabase, STORAGE_BUCKET_NAME, saveMediaOutput } from '../lib/supabase';
+import { getSupabase, saveMediaOutput } from '../lib/supabase';
 
 interface MediaCardProps {
   key?: string | number;
@@ -47,50 +47,39 @@ export function MediaCard({ item, isSelected, onSelect, searchId }: MediaCardPro
       });
       saveAs(response.data, item.filename);
 
+      // Persist download record to Supabase (best-effort)
       if (user) {
-        const client = getSupabase();
-        const storagePath = `${user.id}/${searchId ?? 'unsaved-search'}/${item.filename}`;
-        const { error: uploadError } = await client.storage
-          .from(STORAGE_BUCKET_NAME)
-          .upload(storagePath, response.data, {
-            cacheControl: '3600',
-            upsert: true,
-          });
+        const mimeType = response.headers['content-type'] || null;
+        const sizeBytes = response.data?.size ?? null;
 
-        if (uploadError) {
-          console.warn('Failed to upload media to Supabase storage', uploadError);
-        }
-
-        await client.from('downloads').insert({
+        // Save to downloads table
+        await getSupabase().from('downloads').insert({
           user_id: user.id,
           title: item.filename,
           url: item.url,
           filename: item.filename,
-          mime_type: response.headers['content-type'] || 'application/octet-stream',
+          mime_type: mimeType,
           asset_type: item.type,
-          size_bytes: response.data?.size ?? null,
+          size_bytes: sizeBytes,
           metadata: {
             source: item.url,
             downloaded_at: new Date().toISOString(),
           },
-        });
+        }).catch((e: any) => console.warn('Failed to save download record:', e.message));
 
-        const mimeTypeHeader = response.headers && (response.headers['content-type'] as any);
-        const mimeType = mimeTypeHeader ? String(mimeTypeHeader) : null;
-
+        // Save to media_outputs table
         await saveMediaOutput({
           userId: user.id,
           searchId,
-          storagePath,
+          storagePath: `${user.id}/${searchId ?? 'direct'}/${item.filename}`,
           filename: item.filename,
           mimeType,
-          sizeBytes: response.data?.size ?? null,
+          sizeBytes,
           metadata: {
             source: item.url,
             downloaded_at: new Date().toISOString(),
-            storage_uploaded: !uploadError,
           },
-        });
+        }).catch((e: any) => console.warn('Failed to save media output:', e.message));
       }
     } catch (error) {
       console.error("Download failed", error);

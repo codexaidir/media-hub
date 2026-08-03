@@ -108,7 +108,7 @@ export function Results() {
         }
       );
       
-      saveAs(content, `extractor-${new URL(url).hostname}.zip`);
+      saveAs(content, `extractor-${(() => { try { return new URL(url).hostname; } catch { return 'download'; } })()}.zip`);
     } catch (error) {
       console.error("Bulk download failed", error);
       alert("An error occurred during bulk download.");

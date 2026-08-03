@@ -28,12 +28,15 @@ export function UserProfile() {
     void loadProfileData();
   }, [user?.id]);
 
-  if (user?.id !== userId) {
+  // Only allow viewing your own profile
+  if (!user || user.id !== userId) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh]">
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Profile Not Found</h2>
-        <p className="text-slate-500">The requested user profile does not exist or is private.</p>
-      </div>
+      <PageTransition>
+        <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh]">
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Profile Not Found</h2>
+          <p className="text-slate-500">The requested user profile does not exist or is private.</p>
+        </div>
+      </PageTransition>
     );
   }
 

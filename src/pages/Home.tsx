@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Link as LinkIcon, Instagram, Youtube, Facebook, Twitter, Trash2, Globe2, Zap, Shield, Cpu, Layers, Download, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -6,12 +6,15 @@ import { useAppContext } from '../context';
 import { AnalysisOverlay } from '../components/AnalysisOverlay';
 import { AnalysisStage, MediaItem } from '../types';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim() || '';
+
 export function Home() {
   const { url, setUrl, setMediaItems } = useAppContext();
   const navigate = useNavigate();
   const [stage, setStage] = useState<AnalysisStage>('idle');
   const [message, setMessage] = useState('');
   const [recentUrls, setRecentUrls] = useState<string[]>([]);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('recentUrls');
@@ -30,9 +33,9 @@ export function Home() {
     localStorage.setItem('recentUrls', JSON.stringify(updated));
   };
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!url || !url.startsWith('http')) {
-      alert("Please enter a valid URL starting with http:// or https://");
+      alert('Please enter a valid URL starting with http:// or https://');
       return;
     }
 
@@ -41,42 +44,53 @@ export function Home() {
     setMediaItems([]);
     saveRecentUrl(url);
 
-    const eventSource = new EventSource(`/api/analyze?url=${encodeURIComponent(url)}`);
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-    eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      
-      if (data.type === 'progress') {
-        setStage(data.stage);
-        setMessage(data.message);
-      } else if (data.type === 'complete') {
-        eventSource.close();
-        setMediaItems(data.media);
-        setTimeout(() => {
-           setStage('idle');
-           navigate('/results');
-        }, 1500); // give confetti time to show
-      } else if (data.type === 'error') {
-        setStage('error');
-        setMessage(data.message);
-        eventSource.close();
+    // Simulated progress stages while Edge Function processes
+    const t1 = setTimeout(() => { if (!controller.signal.aborted) { setStage('stage2'); setMessage('Scanning page...'); } }, 1500);
+    const t2 = setTimeout(() => { if (!controller.signal.aborted) { setStage('stage3'); setMessage('Finding downloadable media...'); } }, 3000);
+    const t3 = setTimeout(() => { if (!controller.signal.aborted) { setStage('stage4'); setMessage('Preparing results...'); } }, 4500);
+
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Analysis failed');
       }
-    };
 
-    eventSource.onerror = () => {
-       setStage('error');
-       setMessage('Connection lost. Please try again.');
-       eventSource.close();
-    };
-
-    // Store eventSource in case we need to cancel (simplified for now)
-    (window as any).currentEventSource = eventSource;
+      setStage('stage5');
+      setMessage('Completed');
+      setMediaItems(data.media ?? []);
+      setTimeout(() => {
+        setStage('idle');
+        navigate('/results');
+      }, 1500);
+    } catch (err: any) {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      if (controller.signal.aborted) return;
+      setStage('error');
+      setMessage(err.message || 'Connection lost. Please try again.');
+    } finally {
+      abortRef.current = null;
+    }
   };
 
   const handleCancel = () => {
-    if ((window as any).currentEventSource) {
-      (window as any).currentEventSource.close();
-    }
+    abortRef.current?.abort();
     setStage('idle');
   };
 
