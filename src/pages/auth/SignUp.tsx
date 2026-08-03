@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Mail, Lock, ArrowRight, Loader2, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { PageTransition } from '../../components/PageTransition';
-import { getSupabase, upsertUserProfile } from '../../lib/supabase';
+import { getSupabase } from '../../lib/supabase';
 
 export function SignUp() {
   const [name, setName] = useState('');
@@ -11,6 +12,7 @@ export function SignUp() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { signIn } = useAuth();
 
   const [passwordStrength, setPasswordStrength] = useState({
     length: false,
@@ -54,18 +56,32 @@ export function SignUp() {
     try {
       const client = getSupabase();
 
-      // Use OTP-only flow: send a one-time code to user's email.
-      const { data, error } = await client.auth.signInWithOtp({
+      // Sign up with email + password, then send email confirmation OTP
+      const { data, error } = await client.auth.signUp({
         email: email.trim().toLowerCase(),
+        password,
         options: {
-          shouldCreateUser: true,
+          data: {
+            full_name: name.trim(),
+          },
         },
       });
 
       if (error) throw error;
 
-      // Navigate to verification page carrying email and name in state
-      navigate('/verify-email', { state: { email: email.trim().toLowerCase(), name: name.trim() } });
+      // If Supabase auto-confirmed the user (email confirmations disabled server-side),
+      // a session is returned immediately — go straight to home.
+      if (data.session) {
+        signIn({
+          id: data.user.id,
+          name: name.trim() || data.user.email?.split('@')[0] || 'User',
+          email: data.user.email || email,
+        });
+        navigate('/');
+      } else {
+        // Email confirmation required — navigate to OTP verification page
+        navigate('/verify-email', { state: { email: email.trim().toLowerCase(), name: name.trim() } });
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to send verification code. Please try again.');
     } finally {

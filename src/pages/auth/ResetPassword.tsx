@@ -134,9 +134,22 @@ export function ResetPassword() {
     }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     if (countdown > 0) return;
     setCountdown(60);
+    try {
+      setIsLoading(true);
+      const client = getSupabase();
+      const email = (state?.email || '').trim().toLowerCase();
+      if (!email) throw new Error('Email not found in state');
+      const { error } = await client.auth.resetPasswordForEmail(email);
+      if (error) throw error;
+    } catch (err: any) {
+      console.error('Resend failed', err);
+      setError(err.message || 'Failed to resend code');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {

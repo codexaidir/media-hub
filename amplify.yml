@@ -16,3 +16,15 @@ applications:
       cache:
         paths:
           - node_modules/**
+    # Amplify env vars to set in the AWS Console:
+    #   APP_URL                = https://www.gptimagen.online
+    #   VITE_SUPABASE_URL      = https://ahlsxlolacwqcbouazsn.supabase.co
+    #   VITE_SUPABASE_ANON_KEY = <anon-key>
+    #   SUPABASE_URL           = https://ahlsxlolacwqcbouazsn.supabase.co
+    #   SUPABASE_SERVICE_ROLE_KEY = <service-role-key>
+    #   GEMINI_API_KEY         = <your-gemini-key>
+    #
+    # NOTE: VITE_* vars are embedded into the client JS bundle at build time.
+    #       Only the ANON KEY is safe for client use.
+    #       SUPABASE_SERVICE_ROLE_KEY must NEVER be in a VITE_ prefixed var.
+    #       All non-VITE_ vars stay server-side only.
