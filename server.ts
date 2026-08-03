@@ -18,10 +18,15 @@ interface MediaItem {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || 3000);
+  const HOST = process.env.HOST || '0.0.0.0';
 
   app.use(cors());
   app.use(express.json());
+
+  app.get('/health', (_req, res) => {
+    res.json({ status: 'ok' });
+  });
 
   // API Route for Analyzing URL
   app.get('/api/analyze', async (req, res) => {
@@ -222,8 +227,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`Server running on http://${HOST}:${PORT}`);
   });
 }
 
