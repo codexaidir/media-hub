@@ -60,7 +60,6 @@ export function SignUp() {
           data: {
             full_name: name.trim(),
           },
-          emailRedirectTo: `${window.location.origin}/signin`,
         },
       });
 
@@ -81,7 +80,6 @@ export function SignUp() {
         email: email.trim().toLowerCase(),
         options: {
           shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/signin`,
         },
       });
 

@@ -32,8 +32,11 @@ export function ForgotPassword() {
 
     try {
       const client = getSupabase();
-      const { error } = await client.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { error } = await client.auth.signInWithOtp({
+        email: email.trim().toLowerCase(),
+        options: {
+          shouldCreateUser: false,
+        },
       });
 
       if (error) {
