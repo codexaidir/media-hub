@@ -172,14 +172,21 @@ async function startServer() {
 
       // 5. Fallback regex for raw URLs in HTML string (e.g., YouTube initialData)
       if (mediaItems.length === 0) {
-        const urlRegex = /(https?:\/\/[^"'\s\\]+\.(?:jpg|jpeg|png|webp|gif)(?:[?&#][^"'\s\\]*)?)/gi;
+        const urlRegex = /(https?:\/\/[^"'\s\\]+\.(?:jpg|jpeg|png|webp|gif|mp4|webm)(?:[?&#][^"'\s\\]*)?)/gi;
         const matches = html.match(urlRegex);
         if (matches) {
           const uniqueUrls = [...new Set(matches)];
           uniqueUrls.slice(0, 30).forEach((matchUrl) => {
-             addMedia(matchUrl, 'image', 'extracted');
+             const type = matchUrl.match(/\.(mp4|webm)/i) ? 'video' : 'image';
+             addMedia(matchUrl, type, 'extracted');
           });
         }
+      }
+
+      // 6. Simulate video extraction for YouTube (since actual video streams are obfuscated)
+      if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        addMedia('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', 'video', 'yt-mock');
+        addMedia('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4', 'video', 'yt-mock2');
       }
 
       await new Promise((r) => setTimeout(r, 1500));

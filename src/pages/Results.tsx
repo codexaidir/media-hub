@@ -15,6 +15,7 @@ export function Results() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isZipping, setIsZipping] = useState(false);
   const [zipProgress, setZipProgress] = useState(0);
+  const [activeTab, setActiveTab] = useState('All');
   const { user } = useAuth();
 
   useEffect(() => {
@@ -23,11 +24,25 @@ export function Results() {
     }
   }, [url, navigate]);
 
+  const filteredItems = mediaItems.filter(item => {
+    if (activeTab === 'All') return true;
+    if (activeTab === 'Videos') return item.type === 'video';
+    
+    const extMatch = item.url.match(/\.([a-zA-Z0-9]+)(?:[?#]|$)/);
+    const ext = extMatch ? extMatch[1].toLowerCase() : '';
+    
+    if (activeTab === 'GIFs') return ext === 'gif';
+    if (activeTab === 'PNG') return ext === 'png';
+    if (activeTab === 'Images (JPG/JPEG)') return ext === 'jpg' || ext === 'jpeg';
+    
+    return false;
+  });
+
   const toggleSelectAll = () => {
-    if (selectedIds.size === mediaItems.length) {
+    if (selectedIds.size === filteredItems.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(mediaItems.map(item => item.id)));
+      setSelectedIds(new Set(filteredItems.map(item => item.id)));
     }
   };
 
@@ -109,12 +124,12 @@ export function Results() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {mediaItems.length > 0 && (
+            {filteredItems.length > 0 && (
               <button
                 onClick={toggleSelectAll}
                 className="flex items-center gap-2 px-4 py-2.5 bg-white  border border-slate-200  rounded-xl text-sm font-medium text-slate-700  hover:bg-pink-50  transition-colors"
               >
-                {selectedIds.size === mediaItems.length ? (
+                {selectedIds.size === filteredItems.length && filteredItems.length > 0 ? (
                   <><CheckSquare className="w-4 h-4 text-pink-500" /> Deselect All</>
                 ) : (
                   <><Square className="w-4 h-4 text-slate-400" /> Select All</>
@@ -170,29 +185,57 @@ export function Results() {
         ) : (
           <>
             {/* Results Grid */}
-            <div className="mb-6 flex items-center justify-between">
-               <h2 className="text-lg font-semibold text-slate-800 ">
-                 Found {mediaItems.length} media items
-               </h2>
-               <div className="text-sm text-slate-500">
-                 {selectedIds.size} selected
-               </div>
+            <div className="mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                <h2 className="text-lg font-semibold text-slate-800 ">
+                  Found {filteredItems.length} media items
+                </h2>
+                <div className="text-sm text-slate-500">
+                  {selectedIds.size} selected
+                </div>
+              </div>
+              
+              {/* Category Tabs */}
+              <div className="flex flex-wrap items-center gap-2 mb-6">
+                {['All', 'Images (JPG/JPEG)', 'PNG', 'Videos', 'GIFs'].map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => {
+                       setActiveTab(tab);
+                       setSelectedIds(new Set()); // Reset selections on tab change
+                    }}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      activeTab === tab
+                        ? 'bg-pink-600 text-white shadow-sm'
+                        : 'bg-white text-slate-600 hover:bg-pink-50 border border-slate-200'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
-            >
-              {mediaItems.map((item) => (
-                <MediaCard 
-                  key={item.id} 
-                  item={item} 
-                  isSelected={selectedIds.has(item.id)}
-                  onSelect={handleSelect}
-                />
-              ))}
-            </motion.div>
+            {filteredItems.length === 0 ? (
+               <div className="bg-white/50 rounded-2xl border border-slate-100 p-8 text-center text-slate-500">
+                 No items found in this category.
+               </div>
+            ) : (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
+              >
+                {filteredItems.map((item) => (
+                  <MediaCard 
+                    key={item.id} 
+                    item={item} 
+                    isSelected={selectedIds.has(item.id)}
+                    onSelect={handleSelect}
+                  />
+                ))}
+              </motion.div>
+            )}
           </>
         )}
       </div>

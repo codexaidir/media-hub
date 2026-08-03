@@ -13,14 +13,16 @@
 - **Media Utilities:** `axios` (for blob fetching), `file-saver` (for saving files), `jszip` (for bulk ZIP creation)
 
 ## Core Features
-1. **Media Extraction Engine (Simulated Prototype):** 
+1. **Media Extraction Engine (Server-Side Proxy):** 
    - Users can paste URLs into the home page input. 
-   - An animated `AnalysisOverlay` simulates the processing of the URL.
-   - The engine (currently stubbed with dummy data) detects images and videos.
+   - An animated `AnalysisOverlay` simulates the processing of the URL while the backend fetches and parses the source HTML.
+   - The engine uses `cheerio` for structured DOM parsing (extracting `<img src>`, `<video src>`) and a robust regex fallback to catch raw media URLs embedded in page source or JavaScript data blobs.
+   - Includes platform-specific mocks (e.g. YouTube video extraction simulation) to handle natively obfuscated media streams.
 
 2. **Results & Previews:**
    - Media items are displayed in a responsive masonry-style grid (`Results` page).
    - High-quality image and video previews using the `MediaCard` component.
+   - **Category Tabs:** Dynamic filtering allows users to sort results by type (All, Images (JPG/JPEG), PNG, Videos, GIFs).
    - Users can select multiple items for bulk actions.
 
 3. **Secure Downloading:**
