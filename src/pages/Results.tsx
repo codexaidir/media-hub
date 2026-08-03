@@ -8,6 +8,7 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { saveUserSearch } from '../lib/supabase';
 
 export function Results() {
   const { url, mediaItems, setUrl } = useAppContext();
@@ -16,7 +17,23 @@ export function Results() {
   const [isZipping, setIsZipping] = useState(false);
   const [zipProgress, setZipProgress] = useState(0);
   const [activeTab, setActiveTab] = useState('All');
+  const [searchId, setSearchId] = useState<string | null>(null);
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user?.id || !url || mediaItems.length === 0 || searchId) return;
+
+    const persistSearch = async () => {
+      try {
+        const record = await saveUserSearch(user.id, url, mediaItems.length);
+        setSearchId(record.id);
+      } catch (error) {
+        console.error('Failed to save search', error);
+      }
+    };
+
+    void persistSearch();
+  }, [user?.id, url, mediaItems.length, searchId]);
 
   useEffect(() => {
     if (!url) {
@@ -232,6 +249,7 @@ export function Results() {
                     item={item} 
                     isSelected={selectedIds.has(item.id)}
                     onSelect={handleSelect}
+                    searchId={searchId}
                   />
                 ))}
               </motion.div>

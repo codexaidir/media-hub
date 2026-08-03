@@ -53,39 +53,21 @@ export function SignUp() {
 
     try {
       const client = getSupabase();
-      const { data, error } = await client.auth.signUp({
-        email: email.trim().toLowerCase(),
-        password,
-        options: {
-          data: {
-            full_name: name.trim(),
-          },
-        },
-      });
 
-      if (error) {
-        throw error;
-      }
-
-      if (data.user) {
-        await upsertUserProfile(data.user.id, name.trim());
-      }
-
-      if (data.session?.user) {
-        navigate('/');
-        return;
-      }
-
-      await client.auth.signInWithOtp({
+      // Use OTP-only flow: send a one-time code to user's email.
+      const { data, error } = await client.auth.signInWithOtp({
         email: email.trim().toLowerCase(),
         options: {
           shouldCreateUser: true,
         },
       });
 
-      navigate('/verify-email', { state: { email: email.trim().toLowerCase(), name: name.trim(), password } });
+      if (error) throw error;
+
+      // Navigate to verification page carrying email and name in state
+      navigate('/verify-email', { state: { email: email.trim().toLowerCase(), name: name.trim() } });
     } catch (err: any) {
-      setError(err.message || 'Failed to sign up. Please try again.');
+      setError(err.message || 'Failed to send verification code. Please try again.');
     } finally {
       setIsLoading(false);
     }

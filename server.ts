@@ -1,3 +1,4 @@
+import dotenv from 'dotenv';
 import express from 'express';
 import path from 'path';
 import cors from 'cors';
@@ -5,6 +6,9 @@ import { createServer as createViteServer } from 'vite';
 import * as cheerio from 'cheerio';
 import axios from 'axios';
 import { randomUUID } from 'crypto';
+import { ensureStorageBucket } from './src/lib/supabaseAdmin';
+
+dotenv.config();
 
 interface MediaItem {
   id: string;
@@ -226,6 +230,8 @@ async function startServer() {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
+
+  await ensureStorageBucket();
 
   app.listen(PORT, HOST, () => {
     console.log(`Server running on http://${HOST}:${PORT}`);

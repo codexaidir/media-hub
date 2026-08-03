@@ -134,7 +134,24 @@ export function VerifyEmail() {
   const handleResend = () => {
     if (countdown > 0) return;
     setCountdown(60);
-    // Simulate sending email
+    (async () => {
+      try {
+        setIsLoading(true);
+        const client = getSupabase();
+        const email = (state.email || '').trim().toLowerCase();
+        if (!email) throw new Error('Email not found in state');
+        const { error } = await client.auth.signInWithOtp({
+          email,
+          options: { shouldCreateUser: true },
+        });
+        if (error) throw error;
+      } catch (err: any) {
+        console.error('Resend failed', err);
+        setError(err.message || 'Failed to resend code');
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   };
 
   return (
