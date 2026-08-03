@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, ArrowRight, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { PageTransition } from '../../components/PageTransition';
+import { getSupabase } from '../../lib/supabase';
 
 export function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -30,10 +31,16 @@ export function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Navigate to Reset Password page, passing email in state
-      navigate('/reset-password', { state: { email } });
+      const client = getSupabase();
+      const { error } = await client.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      navigate('/reset-password', { state: { email: email.trim().toLowerCase() } });
     } catch (err: any) {
       setError(err.message || 'Failed to send reset email. Please try again.');
     } finally {

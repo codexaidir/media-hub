@@ -1,17 +1,33 @@
-import React from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { PageTransition } from '../components/PageTransition';
 import { useAuth } from '../context/AuthContext';
 import { User as UserIcon, Mail, Calendar, Activity } from 'lucide-react';
+import { getSupabase } from '../lib/supabase';
 
 export function UserProfile() {
   const { userId } = useParams<{ userId: string }>();
   const { user } = useAuth();
+  const [downloadCount, setDownloadCount] = useState(0);
+  const [joinedAt, setJoinedAt] = useState<string | null>(null);
 
-  // Basic check to ensure users can only see their own profile,
-  // or it acts as a public profile if needed.
-  // For this prototype, we'll just show the profile if the IDs match, otherwise show a generic not found.
-  
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const loadProfileData = async () => {
+      const client = getSupabase();
+      const [{ count }, { data }] = await Promise.all([
+        client.from('downloads').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        client.from('profiles').select('created_at').eq('id', user.id).maybeSingle(),
+      ]);
+
+      setDownloadCount(count ?? 0);
+      setJoinedAt(data?.created_at ? new Date(data.created_at).toLocaleDateString() : null);
+    };
+
+    void loadProfileData();
+  }, [user?.id]);
+
   if (user?.id !== userId) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh]">
@@ -55,7 +71,7 @@ export function UserProfile() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Calendar className="w-4 h-4" />
-                  Joined recently
+                  {joinedAt ? `Joined ${joinedAt}` : 'Joined recently'}
                 </div>
               </div>
             </div>
@@ -66,7 +82,7 @@ export function UserProfile() {
                   <Activity className="w-4 h-4" />
                   Total Extractions
                 </div>
-                <div className="text-3xl font-bold text-slate-900">0</div>
+                <div className="text-3xl font-bold text-slate-900">{downloadCount}</div>
               </div>
             </div>
           </div>

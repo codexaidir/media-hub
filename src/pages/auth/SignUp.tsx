@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Mail, Lock, ArrowRight, Loader2, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { PageTransition } from '../../components/PageTransition';
+import { getSupabase, upsertUserProfile } from '../../lib/supabase';
 
 export function SignUp() {
   const [name, setName] = useState('');
@@ -51,10 +52,27 @@ export function SignUp() {
     setIsLoading(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Navigate to OTP verification, passing email in state
-      navigate('/verify-email', { state: { email, name, password } });
+      const client = getSupabase();
+      const { data, error } = await client.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+        options: {
+          data: {
+            full_name: name.trim(),
+          },
+          emailRedirectTo: `${window.location.origin}/signin`,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.user) {
+        await upsertUserProfile(data.user.id, name.trim());
+      }
+
+      navigate('/verify-email', { state: { email: email.trim().toLowerCase(), name: name.trim(), password } });
     } catch (err: any) {
       setError(err.message || 'Failed to sign up. Please try again.');
     } finally {

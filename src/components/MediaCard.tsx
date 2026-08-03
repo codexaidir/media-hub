@@ -7,6 +7,7 @@ import axios from 'axios';
 import { saveAs } from 'file-saver';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { getSupabase } from '../lib/supabase';
 
 interface MediaCardProps {
   key?: string | number;
@@ -44,6 +45,23 @@ export function MediaCard({ item, isSelected, onSelect }: MediaCardProps) {
         },
       });
       saveAs(response.data, item.filename);
+
+      if (user) {
+        const client = getSupabase();
+        await client.from('downloads').insert({
+          user_id: user.id,
+          title: item.filename,
+          url: item.url,
+          filename: item.filename,
+          mime_type: response.headers['content-type'] || 'application/octet-stream',
+          asset_type: item.type,
+          size_bytes: response.data?.size ?? null,
+          metadata: {
+            source: item.url,
+            downloaded_at: new Date().toISOString(),
+          },
+        });
+      }
     } catch (error) {
       console.error("Download failed", error);
       alert("Failed to download file. It may be restricted.");

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Loader2, AlertCircle, ArrowLeft, Lock, ArrowRight, CheckCircle2, XCircle } from 'lucide-react';
 import { PageTransition } from '../../components/PageTransition';
+import { getSupabase } from '../../lib/supabase';
 
 export function ResetPassword() {
   const [step, setStep] = useState<'otp' | 'new_password'>('otp');
@@ -109,14 +110,21 @@ export function ResetPassword() {
     setIsLoading(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      if (code.startsWith('1')) {
-        throw new Error('Invalid verification code');
+      const client = getSupabase();
+      const { data, error } = await client.auth.verifyOtp({
+        email: (state?.email || '').trim().toLowerCase(),
+        token: code,
+        type: 'recovery',
+      });
+
+      if (error) {
+        throw error;
       }
 
-      setStep('new_password');
-      setError('');
+      if (data.session) {
+        setStep('new_password');
+        setError('');
+      }
     } catch (err: any) {
       setError(err.message || 'Verification failed');
       setOtp(['', '', '', '', '', '']);
@@ -153,9 +161,13 @@ export function ResetPassword() {
     setIsLoading(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const client = getSupabase();
+      const { error } = await client.auth.updateUser({ password });
+      if (error) {
+        throw error;
+      }
+
       setSuccessMsg('Password reset successful. Redirecting to sign in...');
-      
       setTimeout(() => {
         navigate('/signin');
       }, 2000);

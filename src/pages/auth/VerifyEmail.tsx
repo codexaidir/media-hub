@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { PageTransition } from '../../components/PageTransition';
+import { getSupabase } from '../../lib/supabase';
 
 export function VerifyEmail() {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -91,20 +92,24 @@ export function VerifyEmail() {
     setIsLoading(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Simulate verification (any 6 digit code starting with '1' fails for demo)
-      if (code.startsWith('1')) {
-        throw new Error('Invalid verification code');
+      const client = getSupabase();
+      const { data, error } = await client.auth.verifyOtp({
+        email: (state.email || '').trim().toLowerCase(),
+        token: code,
+        type: 'signup',
+      });
+
+      if (error) {
+        throw error;
       }
 
-      // Success
-      const uuid = btoa(state.email || '').substring(0, 12).toLowerCase();
-      signIn({
-        id: `usr-${uuid}`,
-        name: state.name || state.email?.split('@')[0] || 'User',
-        email: state.email || ''
-      });
+      if (data.session) {
+        signIn({
+          id: data.user.id,
+          name: state.name || data.user.user_metadata?.full_name || state.email?.split('@')[0] || 'User',
+          email: data.user.email || state.email || '',
+        });
+      }
 
       navigate('/');
     } catch (err: any) {

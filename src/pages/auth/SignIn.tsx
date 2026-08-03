@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { PageTransition } from '../../components/PageTransition';
+import { getSupabase } from '../../lib/supabase';
 
 export function SignIn() {
   const [email, setEmail] = useState('');
@@ -32,23 +33,24 @@ export function SignIn() {
 
     setIsLoading(true);
 
-    // Simulate API call
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Check for dummy credentials or allow any for prototype
-      if (password.length < 6) {
-        throw new Error('Invalid credentials');
+      const client = getSupabase();
+      const { data, error } = await client.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
+      if (error) {
+        throw error;
       }
 
-      // Generate a deterministic UUID based on email for the prototype
-      const uuid = btoa(email).substring(0, 12).toLowerCase();
-      
-      signIn({
-        id: `usr-${uuid}`,
-        name: email.split('@')[0],
-        email: email
-      });
+      if (data.session) {
+        signIn({
+          id: data.user.id,
+          name: data.user.user_metadata?.full_name || email.split('@')[0],
+          email: data.user.email || email,
+        });
+      }
 
       navigate('/');
     } catch (err: any) {
