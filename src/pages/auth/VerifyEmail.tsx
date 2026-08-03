@@ -93,21 +93,31 @@ export function VerifyEmail() {
     
     try {
       const client = getSupabase();
-      const { data, error } = await client.auth.verifyOtp({
-        email: (state.email || '').trim().toLowerCase(),
+      const email = (state.email || '').trim().toLowerCase();
+
+      let result = await client.auth.verifyOtp({
+        email,
         token: code,
-        type: 'signup',
+        type: 'email',
       });
 
-      if (error) {
-        throw error;
+      if (result.error) {
+        result = await client.auth.verifyOtp({
+          email,
+          token: code,
+          type: 'signup',
+        });
       }
 
-      if (data.session) {
+      if (result.error) {
+        throw result.error;
+      }
+
+      if (result.data.session) {
         signIn({
-          id: data.user.id,
-          name: state.name || data.user.user_metadata?.full_name || state.email?.split('@')[0] || 'User',
-          email: data.user.email || state.email || '',
+          id: result.data.user.id,
+          name: state.name || result.data.user.user_metadata?.full_name || state.email?.split('@')[0] || 'User',
+          email: result.data.user.email || state.email || '',
         });
       }
 

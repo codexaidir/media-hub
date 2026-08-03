@@ -72,6 +72,19 @@ export function SignUp() {
         await upsertUserProfile(data.user.id, name.trim());
       }
 
+      if (data.session?.user) {
+        navigate('/');
+        return;
+      }
+
+      await client.auth.signInWithOtp({
+        email: email.trim().toLowerCase(),
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: `${window.location.origin}/signin`,
+        },
+      });
+
       navigate('/verify-email', { state: { email: email.trim().toLowerCase(), name: name.trim(), password } });
     } catch (err: any) {
       setError(err.message || 'Failed to sign up. Please try again.');
